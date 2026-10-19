@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Worlds 2026 瑞士轮预测</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;font-size:14px}
+img{max-width:100%}
+[hidden]{display:none!important}
+/* Layout: broadcast-style vertical stack of rounds; one round per card, pools inside, standings at bottom */
+:root{
+  --bg:#070d24; --panel:#0e1838; --panel2:#15224a; --line:#253463;
+  --fg:#e8eefc; --mute:#8a98c4; --accent:#2fe0f2; --win:#2fe0f2; --lose:#4a557a;
+  --gold:#f2c94c; --red:#ff6b7a;
+  --display:"Chakra Petch","Noto Sans SC",system-ui,sans-serif;
+  --body:"Noto Sans SC",system-ui,-apple-system,sans-serif;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 40px;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header{display:flex;flex-direction:column;gap:6px;padding-top:6px}
+h1{font-family:var(--display);font-size:2rem;letter-spacing:.02em;margin:0;line-height:1.1;text-wrap:balance}
+h1 span{color:var(--accent)}
+.sub{color:var(--mute);font-size:.85rem;line-height:1.5}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:8px;display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;color:inherit;cursor:pointer}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:9px 12px;font-size:.85rem;font-weight:500}
+.btn.primary{background:var(--accent);color:#04122a;border-color:var(--accent);font-weight:700}
+.btn:focus-visible,.team:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+details.rules{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:.85rem;line-height:1.6;color:var(--mute)}
+details.rules summary{color:var(--fg);font-weight:500;cursor:pointer}
+details.rules ul{margin:6px 0 0;padding-left:18px}
+.round{display:flex;flex-direction:column;gap:12px}
+.rhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.rhead h2{font-family:var(--display);font-size:1.15rem;margin:0;letter-spacing:.04em}
+.rhead .redraw{background:none;border:none;color:var(--accent);font-size:.8rem;padding:4px}
+.pool{display:flex;flex-direction:column;gap:6px}
+.ptag{display:flex;justify-content:space-between;font-family:var(--display);font-size:.78rem;letter-spacing:.08em;color:var(--mute);text-transform:uppercase}
+.ptag b{color:var(--fg)}
+.ptag .stake{color:var(--gold)}
+.match{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.vs{display:flex;align-items:center;padding:0 6px;font-family:var(--display);font-size:.75rem;color:var(--mute)}
+.team{display:flex;align-items:center;gap:8px;border:none;background:transparent;padding:12px 10px;min-height:52px;text-align:left;transition:background .15s,opacity .15s}
+.team.r{flex-direction:row-reverse;text-align:right}
+.team .tag{font-family:var(--display);font-weight:700;font-size:1.15rem;letter-spacing:.02em}
+.team .reg{font-size:.68rem;color:var(--mute);line-height:1.2}
+.team .dot{width:4px;align-self:stretch;border-radius:2px;flex:none}
+.team.w{background:linear-gradient(90deg,rgba(47,224,242,.18),transparent)}
+.team.r.w{background:linear-gradient(270deg,rgba(47,224,242,.18),transparent)}
+.team.w .tag{color:var(--win)}
+.team.l{opacity:.38}
+.team .chk{margin-left:auto;font-size:.8rem;color:var(--win);visibility:hidden}
+.team.r .chk{margin-left:0;margin-right:auto}
+.team.w .chk{visibility:visible}
+.wait{color:var(--mute);font-size:.85rem;padding:14px;border:1px dashed var(--line);border-radius:10px;text-align:center}
+.result{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.result h2{font-family:var(--display);margin:0;font-size:1.2rem;letter-spacing:.04em}
+.tier{display:flex;flex-direction:column;gap:6px}
+.tier .lab{font-size:.75rem;color:var(--mute);font-family:var(--display);letter-spacing:.08em}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:flex;align-items:center;gap:6px;background:var(--panel2);border-radius:6px;padding:6px 10px;font-family:var(--display);font-weight:700}
+.chip small{font-family:var(--body);font-weight:400;color:var(--mute);font-size:.7rem}
+.chip.out{opacity:.5}
+.tier.adv .lab{color:var(--accent)}
+.bk{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.bk h2{font-family:var(--display);margin:0;font-size:1.2rem;letter-spacing:.04em}
+.bk .hint{color:var(--mute);font-size:.75rem}
+.bkscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-inline:-14px;padding-inline:14px;padding-bottom:6px}
+.bkgrid{display:grid;grid-template-columns:repeat(6,148px);gap:14px;align-items:center;width:max-content}
+.bcol{display:flex;flex-direction:column;gap:14px;justify-content:center}
+.bcol .ch{font-family:var(--display);font-size:.7rem;letter-spacing:.08em;color:var(--mute);text-align:center}
+.bpool{background:var(--panel2);border-radius:8px;overflow:hidden}
+.bpool .bh{display:flex;justify-content:space-between;font-family:var(--display);font-size:.68rem;letter-spacing:.06em;padding:5px 8px;background:#0b1430;color:var(--mute)}
+.bpool .bh b{color:var(--fg)}
+.bm{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:5px 8px;border-top:1px solid var(--line);font-family:var(--display);font-weight:700;font-size:.85rem}
+.bm span{color:var(--lose)}
+.bm span.w{color:var(--win)}
+.bm span:last-child{text-align:right}
+.bm i{font-style:normal;font-size:.6rem;color:var(--mute);padding:0 4px}
+.bout{border-radius:8px;padding:6px 8px;display:flex;flex-direction:column;gap:4px}
+.bout.adv{background:rgba(47,224,242,.12);border:1px solid rgba(47,224,242,.5)}
+.bout.el{background:rgba(255,107,122,.08);border:1px solid rgba(255,107,122,.35)}
+.bout .bh{font-family:var(--display);font-size:.66rem;letter-spacing:.06em;display:flex;justify-content:space-between}
+.bout.adv .bh{color:var(--accent)}
+.bout.el .bh{color:var(--red)}
+.bout .ts{display:flex;flex-wrap:wrap;gap:4px 8px;font-family:var(--display);font-weight:700;font-size:.85rem}
+.bout.el .ts{color:var(--mute)}
+@media (min-width:1000px){
+  .wrap{max-width:1320px}
+  header,.bar,details.rules{max-width:none}
+  #rounds{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));align-items:start;gap:28px 24px!important}
+  .bkscroll{overflow-x:visible;margin-inline:0;padding-inline:0}
+  .bkgrid{grid-template-columns:repeat(6,minmax(150px,1fr));width:100%;gap:22px}
+  .bk{padding:22px 24px}
+  .bk h2{font-size:1.5rem}
+  .bm{font-size:1rem;padding:7px 10px}
+  .bout .ts{font-size:1rem}
+  .bcol .ch{font-size:.8rem}
+}
+.credit{font-family:var(--display);font-weight:700;font-size:.85rem;letter-spacing:.12em;color:var(--accent)}
+.bkhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.foot{color:var(--mute);font-size:.75rem;text-align:center;line-height:1.6}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>WORLDS 2026 <span>瑞士轮</span>预测</h1>
+    <div class="credit">MADE BY 虎扑：喜欢冬天winter</div>
+    <div class="sub">点击你认为会赢的队伍。一轮全部选完后，下一轮按战绩分组自动抽签。3 胜晋级，3 败淘汰。</div>
+  </header>
+  <div class="bar">
+    <button class="btn primary" id="simAll">按实力一键模拟</button>
+    <button class="btn" id="simNext">模拟本轮</button>
+    <button class="btn" id="reset">清空重来</button>
+  </div>
+  <details class="rules">
+    <summary>瑞士轮规则说明</summary>
+    <ul>
+      <li>16 支队伍，首轮对阵为官方抽签（10 月 23 日）。</li>
+      <li>之后每轮在相同战绩的队伍间抽签，尽量避免重复交手。</li>
+      <li>决定晋级或淘汰的比赛（2-0、0-2、2-1、1-2、2-2）为 BO3；其余（0-0、1-0、0-1、1-1）为 BO1。</li>
+      <li>3-0 晋级（第 1/2 名档），3-1 晋级（3–5 名档），3-2 晋级（6–8 名档），共 8 队进入淘汰赛。</li>
+      <li>抽签结果是随机模拟，可点“重新抽签”换一组对阵。</li>
+      <li>队名下方数字是 Riot 官方全球实力排名（GPR）分数，10 月 19 日更新。一键模拟按 Elo 公式换算单局胜率，BO3 再按三局两胜计算。</li>
+    </ul>
+  </details>
+  <div id="rounds" class="wrap" style="gap:24px;max-width:none"></div>
+  <div id="result"></div>
+  <div id="bracket"></div>
+  <div class="foot">Made by 虎扑：喜欢冬天winter · 预测结果保存在本机浏览器中。</div>
+</div>
+
+<script>
+const TEAMS={
+ // Riot 官方 Global Power Rankings 分数（2026-10-19 更新）
+ GEN:{r:"LCK #1",s:1519},IG:{r:"LPL #4",s:1348},TLAW:{r:"LCS #1",s:1369},CFO:{r:"LCP #2",s:1314},
+ AL:{r:"LPL #1",s:1409},KC:{r:"LEC #3",s:1409},G2:{r:"LEC #1",s:1480},DK:{r:"LCK #4",s:1409},
+ HLE:{r:"LCK #2",s:1540},TES:{r:"LPL #3",s:1364},LOS:{r:"CBLOL #1",s:1183},T1:{r:"LCK #3",s:1471},
+ TSW:{r:"LCP #1",s:1368},LYON:{r:"LCS #2",s:1424},BLG:{r:"LPL #2",s:1513},MKOI:{r:"LEC #2",s:1322}
+};
+const REGC={LCK:"#2f8cff",LPL:"#ff4b5c",LEC:"#3ad29f",LCS:"#4ec3ff",LCP:"#f2a541",CBLOL:"#9be15d"};
+const R1=[["GEN","IG"],["TLAW","CFO"],["AL","KC"],["G2","DK"],["HLE","TES"],["LOS","T1"],["TSW","LYON"],["BLG","MKOI"]];
+const RINFO=[
+ {t:"第 1 轮",d:"10月23日"},{t:"第 2 轮",d:"10月24日"},{t:"第 3 轮",d:"10月25–26日"},
+ {t:"第 4 轮",d:"10月28–30日"},{t:"第 5 轮",d:"10月31日"}];
+const BO={"0-0":1,"1-0":1,"0-1":1,"2-0":3,"1-1":1,"0-2":3,"2-1":3,"1-2":3,"2-2":3};
+const KEY="worlds26-swiss-v1";
+
+let rounds; // array of arrays of {a,b,w}
+function fresh(){rounds=[R1.map(([a,b])=>({a,b,w:null}))]}
+try{const s=JSON.parse(localStorage.getItem(KEY));if(Array.isArray(s)&&s.length)rounds=s;else fresh()}catch(e){fresh()}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(rounds))}catch(e){}}
+
+function records(upTo){ // records after rounds[0..upTo-1]
+  const rec={};for(const t in TEAMS)rec[t]={w:0,l:0,opp:[]};
+  for(let i=0;i<upTo&&i<rounds.length;i++)for(const m of rounds[i]){
+    rec[m.a].opp.push(m.b);rec[m.b].opp.push(m.a);
+    if(m.w){const l=m.w===m.a?m.b:m.a;rec[m.w].w++;rec[l].l++;}
+  }
+  return rec;
+}
+const done=r=>r.every(m=>m.w);
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function pairPool(teams,rec){
+  // backtracking, avoid rematch; fallback to plain random
+  const t=shuffle(teams.slice());
+  function bt(rest){
+    if(!rest.length)return[];
+    const [x,...others]=rest;
+    for(let i=0;i<others.length;i++){
+      const y=others[i];if(rec[x].opp.includes(y))continue;
+      const sub=bt(others.filter((_,j)=>j!==i));if(sub)return[[x,y],...sub];
+    }return null;
+  }
+  return bt(t)||(()=>{const p=[];for(let i=0;i<t.length;i+=2)p.push([t[i],t[i+1]]);return p})();
+}
+function drawRound(idx){ // build rounds[idx] from records after idx rounds
+  const rec=records(idx);const pools={};
+  for(const t in TEAMS){const r=rec[t];if(r.w>=3||r.l>=3)continue;(pools[r.w+"-"+r.l]??=[]).push(t)}
+  const keys=Object.keys(pools).sort((x,y)=>{const[a,b]=x.split("-").map(Number),[c,d]=y.split("-").map(Number);return (c-d)-(a-b)});
+  const ms=[];for(const k of keys)for(const[a,b] of pairPool(pools[k],rec))ms.push({a,b,w:null,pool:k});
+  rounds[idx]=ms;
+}
+function sync(){
+  // drop rounds after the first incomplete one, then draw next if needed
+  for(let i=0;i<rounds.length;i++){if(!done(rounds[i])){rounds.length=i+1;break}}
+  const last=rounds.length-1;
+  if(done(rounds[last])&&rounds.length<5)drawRound(rounds.length);
+  save();render();
+}
+function pick(ri,mi,team){
+  const m=rounds[ri][mi];if(m.w===team)return;
+  m.w=team;rounds.length=ri+1;sync();
+}
+function winProb(a,b,bo){
+  const p=1/(1+Math.pow(10,(TEAMS[b].s-TEAMS[a].s)/400));
+  return bo===3?p*p*(3-2*p):p;
+}
+function simRound(ri){
+  rounds[ri].forEach(m=>{if(!m.w){const bo=BO[m.pool||"0-0"];m.w=Math.random()<winProb(m.a,m.b,bo)?m.a:m.b}});
+  rounds.length=ri+1;
+}
+function regionOf(t){return TEAMS[t].r.split(" ")[0]}
+function teamBtn(t,m,side,ri,mi){
+  const cls=["team",side==="r"?"r":"",m.w?(m.w===t?"w":"l"):""].join(" ");
+  return `<button class="${cls}" data-r="${ri}" data-m="${mi}" data-t="${t}" aria-pressed="${m.w===t}">
+    <span class="dot" style="background:${REGC[regionOf(t)]}"></span>
+    <span><div class="tag">${t}</div><div class="reg">${TEAMS[t].r} · ${TEAMS[t].s}</div></span><span class="chk">✓ 胜</span></button>`;
+}
+function stakeOf(k){const[w,l]=k.split("-").map(Number);
+  if(w===2&&l===2)return"胜者晋级 · 败者淘汰";
+  if(w===2)return"胜者晋级";if(l===2)return"败者淘汰";return"";}
+function render(){
+  let html="";
+  for(let ri=0;ri<5;ri++){
+    const info=RINFO[ri];
+    html+=`<section class="round"><div class="rhead"><h2>${info.t} <span style="color:var(--mute);font-size:.8rem;font-family:var(--body)">${info.d}</span></h2>${ri>0&&rounds[ri]?`<button class="redraw" data-redraw="${ri}">重新抽签</button>`:""}</div>`;
+    const R=rounds[ri];
+    if(!R){html+=`<div class="wait">完成上一轮预测后自动抽签</div></section>`;continue}
+    const groups={};R.forEach((m,mi)=>{const k=m.pool||"0-0";(groups[k]??=[]).push([m,mi])});
+    for(const k in groups){
+      const st=stakeOf(k);
+      html+=`<div class="pool"><div class="ptag"><span><b>${k}</b> 组 · BO${BO[k]}</span><span class="stake">${st}</span></div>`;
+      for(const[m,mi] of groups[k])html+=`<div class="match">${teamBtn(m.a,m,"l",ri,mi)}<div class="vs">VS</div>${teamBtn(m.b,m,"r",ri,mi)}</div>`;
+      html+=`</div>`;
+    }
+    html+=`</section>`;
+  }
+  document.getElementById("rounds").innerHTML=html;
+  // results
+  const rec=records(rounds.length);const tiers={"3-0":[],"3-1":[],"3-2":[],out:[]};
+  for(const t in TEAMS){const r=rec[t];if(r.w>=3)tiers["3-"+r.l].push(t);else if(r.l>=3)tiers.out.push([t,r.w])}
+  const any=tiers["3-0"].length+tiers.out.length;
+  const chip=t=>`<span class="chip"><span class="dot" style="width:4px;height:16px;border-radius:2px;background:${REGC[regionOf(t)]}"></span>${t}<small>${TEAMS[t].r}</small></span>`;
+  const complete=rounds.length===5&&done(rounds[4]);
+  document.getElementById("result").innerHTML=any?`<div class="result"><h2>${complete?"你的预测结果":"目前战况"}</h2>
+    <div class="tier adv"><div class="lab">3-0 晋级 · 1/2 名档</div><div class="chips">${tiers["3-0"].map(chip).join("")||"<span class='sub'>待定</span>"}</div></div>
+    <div class="tier adv"><div class="lab">3-1 晋级 · 3–5 名档</div><div class="chips">${tiers["3-1"].map(chip).join("")||"<span class='sub'>待定</span>"}</div></div>
+    <div class="tier adv"><div class="lab">3-2 晋级 · 6–8 名档</div><div class="chips">${tiers["3-2"].map(chip).join("")||"<span class='sub'>待定</span>"}</div></div>
+    <div class="tier"><div class="lab" style="color:var(--red)">淘汰</div><div class="chips">${tiers.out.sort((a,b)=>b[1]-a[1]).map(([t,w])=>chip(t).replace('class="chip"','class="chip out"').replace("</small>",` · ${w}-3</small>`)).join("")||"<span class='sub'>暂无</span>"}</div></div>
+  </div>`:"";
+  renderBracket();
+}
+function renderBracket(){
+  const el=document.getElementById("bracket");
+  const complete=rounds.length===5&&done(rounds[4]);
+  if(!complete){el.innerHTML="";return}
+  const rec=records(5);
+  const pool=(ri,k)=>{const ms=rounds[ri].filter(m=>(m.pool||"0-0")===k);
+    return `<div class="bpool"><div class="bh"><b>${k}</b><span>BO${BO[k]}</span></div>${ms.map(m=>`<div class="bm"><span class="${m.w===m.a?"w":""}">${m.a}</span><i>VS</i><span class="${m.w===m.b?"w":""}">${m.b}</span></div>`).join("")}</div>`};
+  const out=(w,l,lab)=>{const ts=Object.keys(TEAMS).filter(t=>rec[t].w===w&&rec[t].l===l);const adv=w===3;
+    return `<div class="bout ${adv?"adv":"el"}"><div class="bh"><span>${adv?"晋级":"淘汰"}</span><span>${w}-${l}${lab?" · "+lab:""}</span></div><div class="ts">${ts.map(t=>`<span>${t}</span>`).join("")}</div></div>`};
+  const col=(h,inner)=>`<div class="bcol"><div class="ch">${h}</div>${inner}</div>`;
+  el.innerHTML=`<div class="bk"><div class="bkhead"><h2>WORLDS 2026 瑞士轮对阵图</h2><span class="credit">MADE BY 虎扑：喜欢冬天winter</span></div><div class="hint">青色为胜者（手机上可左右滑动）</div>
+  <div class="bkscroll"><div class="bkgrid">
+   ${col("R1 · 10/23",pool(0,"0-0"))}
+   ${col("R2 · 10/24",pool(1,"1-0")+pool(1,"0-1"))}
+   ${col("R3 · 10/25–26",pool(2,"2-0")+pool(2,"1-1")+pool(2,"0-2"))}
+   ${col("R4 · 10/28–30",out(3,0,"1/2名")+pool(3,"2-1")+pool(3,"1-2")+out(0,3))}
+   ${col("R5 · 10/31",out(3,1,"3–5名")+pool(4,"2-2")+out(1,3))}
+   ${col("结果",out(3,2,"6–8名")+out(2,3))}
+  </div></div></div>`;
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest(".team");
+  if(b){pick(+b.dataset.r,+b.dataset.m,b.dataset.t);return}
+  const rd=e.target.closest("[data-redraw]");
+  if(rd){const i=+rd.dataset.redraw;rounds.length=i;drawRound(i);save();render();}
+});
+document.getElementById("simAll").onclick=()=>{
+  for(let i=0;i<5;i++){if(!rounds[i])drawRound(i);if(!done(rounds[i]))simRound(i);}
+  rounds.length=5;save();render();
+};
+document.getElementById("simNext").onclick=()=>{
+  const i=rounds.length-1;if(done(rounds[i]))return;simRound(i);sync();
+};
+document.getElementById("reset").onclick=()=>{fresh();sync()};
+sync();
+</script>
+</body>
+</html>
