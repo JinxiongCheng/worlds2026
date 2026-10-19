@@ -108,6 +108,19 @@ details.rules ul{margin:6px 0 0;padding-left:18px}
 .credit{font-family:var(--display);font-weight:700;font-size:.85rem;letter-spacing:.12em;color:var(--accent)}
 .bkhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
 .foot{color:var(--mute);font-size:.75rem;text-align:center;line-height:1.6}
+.count{text-align:center;font-family:var(--display);font-size:.95rem;color:var(--mute);letter-spacing:.04em}
+.count b{color:var(--accent);font-size:1.2rem;margin:0 2px}
+.kogrid{display:flex;flex-direction:column;gap:18px}
+.kostage{display:flex;flex-direction:column;gap:8px}
+.kostage .ptag{margin-top:2px}
+.champ{display:flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(90deg,rgba(242,201,76,.08),rgba(242,201,76,.22),rgba(242,201,76,.08));border:1px solid rgba(242,201,76,.6);border-radius:10px;padding:14px;font-family:var(--display);font-weight:700}
+.champ .lab{color:var(--gold);font-size:.8rem;letter-spacing:.1em}
+.champ .t{font-size:1.6rem;color:var(--gold)}
+.champ small{font-family:var(--body);font-weight:400;color:var(--mute);font-size:.75rem}
+@media (min-width:1000px){
+  .kogrid{display:grid;grid-template-columns:repeat(3,1fr);align-items:center;gap:24px}
+  .kostage.f{gap:14px}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -117,11 +130,11 @@ details.rules ul{margin:6px 0 0;padding-left:18px}
   <header>
     <h1>WORLDS 2026 <span>瑞士轮</span>预测</h1>
     <div class="credit">MADE BY 虎扑：喜欢冬天winter</div>
-    <div class="sub">点击你认为会赢的队伍。一轮全部选完后，下一轮按战绩分组自动抽签。3 胜晋级，3 败淘汰。</div>
+    <div class="sub">点击你认为会赢的队伍。一轮全部选完后，下一轮按战绩分组自动抽签。3 胜晋级，3 败淘汰；瑞士轮结束后继续预测八强、四强和决赛。</div>
   </header>
   <div class="bar">
-    <button class="btn primary" id="simAll">按实力一键模拟</button>
-    <button class="btn" id="simNext">模拟本轮</button>
+    <button class="btn primary" id="simAll">一键实力模拟</button>
+    <button class="btn" id="simNext">实力模拟本轮</button>
     <button class="btn" id="reset">清空重来</button>
   </div>
   <details class="rules">
@@ -132,22 +145,28 @@ details.rules ul{margin:6px 0 0;padding-left:18px}
       <li>决定晋级或淘汰的比赛（2-0、0-2、2-1、1-2、2-2）为 BO3；其余（0-0、1-0、0-1、1-1）为 BO1。</li>
       <li>3-0 晋级（第 1/2 名档），3-1 晋级（3–5 名档），3-2 晋级（6–8 名档），共 8 队进入淘汰赛。</li>
       <li>抽签结果是随机模拟，可点“重新抽签”换一组对阵。</li>
-      <li>队名下方数字是 Riot 官方全球实力排名（GPR）分数，10 月 19 日更新。一键模拟按 Elo 公式换算单局胜率，BO3 再按三局两胜计算。</li>
+      <li>队名下方数字是综合实力分：参考 Riot 官方实力排名（GPR，10 月 19 日）、2026 MSI 战绩（HLE 夺冠、BLG 亚军）、各赛区赛季排名和赛前评估，由 Claude 主观打分，仅供娱乐。</li>
+      <li>实力模拟：按实力分（Elo 公式）换算单局胜率，差 200 分约等于单局 76% 胜率，BO3/BO5 再按多局计算。强队大概率赢，但仍保留爆冷可能，每次结果可能不同。</li>
+      <li>页面底部的预测人数：每个浏览器第一次选出冠军时计 1 次。</li>
+      <li>淘汰赛（八强起全部 BO5）：两支 3-0 队伍分在不同半区、各自对阵 3-2 队伍，其余队伍随机配对，八强尽量避免同赛区相遇。这是简化版抽签，可点“重新抽签”换一组。</li>
     </ul>
   </details>
   <div id="rounds" class="wrap" style="gap:24px;max-width:none"></div>
   <div id="result"></div>
+  <div id="ko"></div>
   <div id="bracket"></div>
+  <div class="count" id="count" hidden></div>
   <div class="foot">Made by 虎扑：喜欢冬天winter · 预测结果保存在本机浏览器中。</div>
 </div>
 
 <script>
 const TEAMS={
- // Riot 官方 Global Power Rankings 分数（2026-10-19 更新）
- GEN:{r:"LCK #1",s:1519},IG:{r:"LPL #4",s:1348},TLAW:{r:"LCS #1",s:1369},CFO:{r:"LCP #2",s:1314},
- AL:{r:"LPL #1",s:1409},KC:{r:"LEC #3",s:1409},G2:{r:"LEC #1",s:1480},DK:{r:"LCK #4",s:1409},
- HLE:{r:"LCK #2",s:1540},TES:{r:"LPL #3",s:1364},LOS:{r:"CBLOL #1",s:1183},T1:{r:"LCK #3",s:1471},
- TSW:{r:"LCP #1",s:1368},LYON:{r:"LCS #2",s:1424},BLG:{r:"LPL #2",s:1513},MKOI:{r:"LEC #2",s:1322}
+ // 综合实力分（Elo 量纲）：参考 Riot GPR（10-19）、2026 MSI 战绩（HLE 冠军 / BLG 亚军）、
+ // 各赛区赛季排名与赛前强弱评估，由 Claude 主观打分。差 200 分 ≈ 单局 76% 胜率。
+ GEN:{r:"LCK #1",s:1720},IG:{r:"LPL #4",s:1520},TLAW:{r:"LCS #1",s:1450},CFO:{r:"LCP #2",s:1400},
+ AL:{r:"LPL #1",s:1630},KC:{r:"LEC #3",s:1480},G2:{r:"LEC #1",s:1600},DK:{r:"LCK #4",s:1550},
+ HLE:{r:"LCK #2",s:1700},TES:{r:"LPL #3",s:1560},LOS:{r:"CBLOL #1",s:1330},T1:{r:"LCK #3",s:1610},
+ TSW:{r:"LCP #1",s:1420},LYON:{r:"LCS #2",s:1440},BLG:{r:"LPL #2",s:1660},MKOI:{r:"LEC #2",s:1450}
 };
 const REGC={LCK:"#2f8cff",LPL:"#ff4b5c",LEC:"#3ad29f",LCS:"#4ec3ff",LCP:"#f2a541",CBLOL:"#9be15d"};
 const R1=[["GEN","IG"],["TLAW","CFO"],["AL","KC"],["G2","DK"],["HLE","TES"],["LOS","T1"],["TSW","LYON"],["BLG","MKOI"]];
@@ -204,7 +223,8 @@ function pick(ri,mi,team){
   m.w=team;rounds.length=ri+1;sync();
 }
 function winProb(a,b,bo){
-  const p=1/(1+Math.pow(10,(TEAMS[b].s-TEAMS[a].s)/400));
+  const p=1/(1+Math.pow(10,(TEAMS[b].s-TEAMS[a].s)/400)),q=1-p;
+  if(bo===5)return p*p*p*(1+3*q+6*q*q);
   return bo===3?p*p*(3-2*p):p;
 }
 function simRound(ri){
@@ -212,6 +232,88 @@ function simRound(ri){
   rounds.length=ri+1;
 }
 function regionOf(t){return TEAMS[t].r.split(" ")[0]}
+
+// ---- Knockout stage: QF (4) -> SF (2) -> Final, all BO5 ----
+const KO_KEY="worlds26-ko-v1";
+let ko=null; // {sig, qf:[[a,b]x4], w:{qf:[4], sf:[2], f}}
+try{ko=JSON.parse(localStorage.getItem(KO_KEY))}catch(e){ko=null}
+function saveKO(){try{localStorage.setItem(KO_KEY,JSON.stringify(ko))}catch(e){}}
+const swissDone=()=>rounds.length===5&&done(rounds[4]);
+function swissTiers(){
+  const rec=records(5),t={"3-0":[],"3-1":[],"3-2":[]};
+  for(const x in TEAMS){const r=rec[x];if(r.w>=3)t["3-"+r.l].push(x)}
+  return t;
+}
+const sigOf=t=>["3-0","3-1","3-2"].map(k=>t[k].slice().sort().join(",")).join("|");
+function drawKO(){
+  const t=swissTiers();let qf;
+  for(let i=0;i<300;i++){
+    const top=shuffle(t["3-0"].slice()),low=shuffle(t["3-2"].slice());
+    const rest=shuffle([...t["3-1"],...low.slice(2)]);
+    // halves: QF1+QF2 -> SF1, QF3+QF4 -> SF2; the two 3-0 teams sit in different halves
+    qf=[[top[0],low[0]],[rest[0],rest[1]],[top[1],low[1]],[rest[2],rest[3]]];
+    if(!qf.some(([a,b])=>regionOf(a)===regionOf(b)))break;
+  }
+  ko={sig:sigOf(t),qf,w:{qf:[null,null,null,null],sf:[null,null],f:null}};
+}
+function koMatches(){
+  const w=ko.w,sf=[0,1].map(i=>w.qf[2*i]&&w.qf[2*i+1]?[w.qf[2*i],w.qf[2*i+1]]:null);
+  return{qf:ko.qf,sf,f:w.sf[0]&&w.sf[1]?[w.sf[0],w.sf[1]]:null};
+}
+function syncKO(){
+  if(!swissDone()){ko=null;saveKO();return}
+  if(!ko||ko.sig!==sigOf(swissTiers()))drawKO();
+  // drop picks that no longer match their pairing
+  const m=koMatches();
+  m.sf.forEach((p,i)=>{if(!p||!p.includes(ko.w.sf[i]))ko.w.sf[i]=null});
+  const f=koMatches().f;if(!f||!f.includes(ko.w.f))ko.w.f=null;
+  saveKO();
+}
+function pickKO(stage,i,team){
+  if(stage==="f")ko.w.f=team;else ko.w[stage][i]=team;
+  syncKO();render();
+}
+function simKOStage(){ // fill the earliest stage that still has open matches; returns false if all decided
+  const m=koMatches(),roll=([a,b])=>Math.random()<winProb(a,b,5)?a:b;
+  if(ko.w.qf.some(x=>!x)){ko.qf.forEach((p,i)=>{if(!ko.w.qf[i])ko.w.qf[i]=roll(p)});return true}
+  if(ko.w.sf.some(x=>!x)){m.sf.forEach((p,i)=>{if(!ko.w.sf[i])ko.w.sf[i]=roll(p)});return true}
+  if(!ko.w.f){ko.w.f=roll(m.f);return true}
+  return false;
+}
+// ---- Prediction counter: +1 once per browser when a champion is first predicted ----
+const CNT_URL="https://abacus.jasoncameron.dev",CNT_ID="jinxiongcheng-worlds2026/predictions",CNT_FLAG="worlds26-counted";
+let counted=false;try{counted=!!localStorage.getItem(CNT_FLAG)}catch(e){}
+function showCount(n){
+  if(!Number.isFinite(n))return;
+  const el=document.getElementById("count");el.innerHTML=`已有<b>${n}</b>人完成预测`;el.hidden=false;
+}
+fetch(`${CNT_URL}/get/${CNT_ID}`).then(r=>r.json()).then(d=>showCount(d.value)).catch(()=>{});
+function countOnce(){
+  if(counted)return;counted=true;
+  try{localStorage.setItem(CNT_FLAG,"1")}catch(e){}
+  fetch(`${CNT_URL}/hit/${CNT_ID}`).then(r=>r.json()).then(d=>showCount(d.value)).catch(()=>{});
+}
+function koBtn(t,w,side,stage,i){
+  const cls=["team",side==="r"?"r":"",w?(w===t?"w":"l"):""].join(" ");
+  return `<button class="${cls}" data-ko="${stage}" data-i="${i}" data-t="${t}" aria-pressed="${w===t}">
+    <span class="dot" style="background:${REGC[regionOf(t)]}"></span>
+    <span><div class="tag">${t}</div><div class="reg">${TEAMS[t].r} · ${TEAMS[t].s}</div></span><span class="chk">✓ 胜</span></button>`;
+}
+function renderKO(){
+  const el=document.getElementById("ko");
+  if(!ko){el.innerHTML="";return}
+  const m=koMatches();
+  if(ko.w.f)countOnce();
+  const match=(p,w,stage,i)=>p?`<div class="match">${koBtn(p[0],w,"l",stage,i)}<div class="vs">VS</div>${koBtn(p[1],w,"r",stage,i)}</div>`:`<div class="wait">等待上一轮结果</div>`;
+  const stage=(title,cls,inner,when)=>`<div class="kostage ${cls}"><div class="ptag"><span><b>${title}</b> · BO5</span><span>${when}</span></div>${inner}</div>`;
+  const champ=ko.w.f?`<div class="champ"><span class="lab">冠军预测</span><span class="dot" style="width:5px;height:26px;border-radius:2px;background:${REGC[regionOf(ko.w.f)]}"></span><span class="t">${ko.w.f}</span><small>${TEAMS[ko.w.f].r}</small></div>`:"";
+  el.innerHTML=`<section class="round"><div class="rhead"><h2>淘汰赛</h2><button class="redraw" data-koredraw>重新抽签</button></div>
+   <div class="kogrid">
+    ${stage("八强","qf",ko.qf.map((p,i)=>match(p,ko.w.qf[i],"qf",i)).join(""),"11月3–8日 · 德州艾伦")}
+    ${stage("四强","sf",m.sf.map((p,i)=>match(p,ko.w.sf[i],"sf",i)).join(""),"11月3–8日 · 德州艾伦")}
+    ${stage("决赛","f",match(m.f,ko.w.f,"f",0)+champ,"11月14日 · 纽约巴克莱中心")}
+   </div></section>`;
+}
 function teamBtn(t,m,side,ri,mi){
   const cls=["team",side==="r"?"r":"",m.w?(m.w===t?"w":"l"):""].join(" ");
   return `<button class="${cls}" data-r="${ri}" data-m="${mi}" data-t="${t}" aria-pressed="${m.w===t}">
@@ -250,6 +352,7 @@ function render(){
     <div class="tier adv"><div class="lab">3-2 晋级 · 6–8 名档</div><div class="chips">${tiers["3-2"].map(chip).join("")||"<span class='sub'>待定</span>"}</div></div>
     <div class="tier"><div class="lab" style="color:var(--red)">淘汰</div><div class="chips">${tiers.out.sort((a,b)=>b[1]-a[1]).map(([t,w])=>chip(t).replace('class="chip"','class="chip out"').replace("</small>",` · ${w}-3</small>`)).join("")||"<span class='sub'>暂无</span>"}</div></div>
   </div>`:"";
+  syncKO();renderKO();
   renderBracket();
 }
 function renderBracket(){
@@ -273,19 +376,26 @@ function renderBracket(){
   </div></div></div>`;
 }
 document.addEventListener("click",e=>{
+  const k=e.target.closest("[data-ko]");
+  if(k){pickKO(k.dataset.ko,+k.dataset.i,k.dataset.t);return}
   const b=e.target.closest(".team");
   if(b){pick(+b.dataset.r,+b.dataset.m,b.dataset.t);return}
+  if(e.target.closest("[data-koredraw]")){drawKO();saveKO();render();return}
   const rd=e.target.closest("[data-redraw]");
   if(rd){const i=+rd.dataset.redraw;rounds.length=i;drawRound(i);save();render();}
 });
 document.getElementById("simAll").onclick=()=>{
   for(let i=0;i<5;i++){if(!rounds[i])drawRound(i);if(!done(rounds[i]))simRound(i);}
-  rounds.length=5;save();render();
+  rounds.length=5;save();syncKO();
+  while(simKOStage());
+  saveKO();render();
 };
 document.getElementById("simNext").onclick=()=>{
-  const i=rounds.length-1;if(done(rounds[i]))return;simRound(i);sync();
+  const i=rounds.length-1;
+  if(!done(rounds[i])){simRound(i);sync();return}
+  if(ko&&simKOStage()){saveKO();render()}
 };
-document.getElementById("reset").onclick=()=>{fresh();sync()};
+document.getElementById("reset").onclick=()=>{fresh();ko=null;saveKO();sync()};
 sync();
 </script>
 </body>
