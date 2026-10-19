@@ -60,6 +60,14 @@ details.rules ul{margin:6px 0 0;padding-left:18px}
 .team .chk{margin-left:auto;font-size:.8rem;color:var(--win);visibility:hidden}
 .team.r .chk{margin-left:0;margin-right:auto}
 .team.w .chk{visibility:visible}
+#aiToggle[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+.team .reg em{font-style:normal;color:var(--accent)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);z-index:30;max-width:calc(100% - 32px);width:max-content;background:var(--panel2);border:1px solid var(--accent);border-radius:12px;padding:10px 16px;box-shadow:0 8px 24px rgba(0,0,0,.45);font-size:.9rem;line-height:1.5;text-align:center;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.up{border-color:var(--gold)}
+.toast b{font-family:var(--display);font-size:1.05rem}
+.toast.up b{color:var(--gold)}
+.toast .sub2{display:block;color:var(--mute);font-size:.8rem}
 .wait{color:var(--mute);font-size:.85rem;padding:14px;border:1px dashed var(--line);border-radius:10px;text-align:center}
 .result{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px}
 .result h2{font-family:var(--display);margin:0;font-size:1.2rem;letter-spacing:.04em}
@@ -145,6 +153,7 @@ details.rules ul{margin:6px 0 0;padding-left:18px}
     <button class="btn" id="simNext">实力模拟本轮</button>
     <button class="btn" id="reset">清空重来</button>
     <button class="btn" id="export">导出图片</button>
+    <button class="btn" id="aiToggle" aria-pressed="false">AI 胜率：关</button>
   </div>
   <details class="rules">
     <summary>瑞士轮规则说明</summary>
@@ -156,6 +165,7 @@ details.rules ul{margin:6px 0 0;padding-left:18px}
       <li>抽签结果是随机模拟，可点“重新抽签”换一组对阵。</li>
       <li>队名下方数字是综合实力分：参考 Riot 官方实力排名（GPR，10 月 19 日）、2026 MSI 战绩（HLE 夺冠、BLG 亚军）、各赛区赛季排名和赛前评估，由 Claude 主观打分，仅供娱乐。</li>
       <li>实力模拟：按实力分（Elo 公式）换算单局胜率，差 200 分约等于单局 76% 胜率，BO3/BO5 再按多局计算。强队大概率赢，但仍保留爆冷可能，每次结果可能不同。</li>
+      <li>“AI 胜率”开关：打开后每支队伍下方显示它赢下这场的 AI 胜率。选了 AI 胜率低于 50% 的一方算押一个冷门，瑞士轮和淘汰赛选完时会分别提示。</li>
       <li>页面底部的预测人数：每个浏览器第一次选出冠军时计 1 次。</li>
       <li>淘汰赛（八强起全部 BO5）：两支 3-0 队伍分在不同半区、各自对阵 3-2 队伍，其余队伍随机配对，八强尽量避免同赛区相遇。这是简化版抽签，可点“重新抽签”换一组。</li>
     </ul>
@@ -168,6 +178,7 @@ details.rules ul{margin:6px 0 0;padding-left:18px}
   <div class="foot">Made by 虎扑：喜欢冬天winter · 预测结果保存在本机浏览器中。</div>
 </div>
 
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="modal" id="shot" hidden>
   <div class="mbox">
     <label class="mopt"><input type="checkbox" id="shotDetail"> 包含瑞士轮对阵图</label>
@@ -244,7 +255,21 @@ function sync(){
 function pick(ri,mi,team){
   const m=rounds[ri][mi];if(m.w===team)return;
   m.w=team;rounds.length=ri+1;sync();
+  if(swissDone()){
+    const u=upsetsIn(rounds.flat().map(x=>[x.a,x.b,x.w,BO[x.pool||"0-0"]]));
+    toast(`<b>瑞士轮完成！</b> 你押了 ${u} 个冷门<span class="sub2">8 强已出炉，往下预测淘汰赛</span>`,u>0);
+  }
 }
+// ---- Instant feedback while picking ----
+const pct=p=>Math.round(p*100)+"%";
+let SHOW_AI=false;try{SHOW_AI=localStorage.getItem("worlds26-showai")==="1"}catch(e){}
+function upsetsIn(ms){return ms.filter(([a,b,w,bo])=>w&&winProb(w,w===a?b:a,bo)<.5).length}
+let toastTimer=null;
+function toast(html,up){
+  const el=document.getElementById("toast");el.innerHTML=html;el.classList.toggle("up",!!up);el.classList.add("show");
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove("show"),2600);
+}
+function regLine(t,o,bo){return SHOW_AI?`${TEAMS[t].r} · <em>胜率 ${pct(winProb(t,o,bo))}</em>`:`${TEAMS[t].r} · ${TEAMS[t].s}`}
 function winProb(a,b,bo){
   const p=1/(1+Math.pow(10,(TEAMS[b].s-TEAMS[a].s)/400)),q=1-p;
   if(bo===5)return p*p*p*(1+3*q+6*q*q);
@@ -295,6 +320,12 @@ function syncKO(){
 function pickKO(stage,i,team){
   if(stage==="f")ko.w.f=team;else ko.w[stage][i]=team;
   syncKO();render();
+  const m=koMatches();
+  if(ko.w.f){
+    const ms=[...ko.qf.map((p,j)=>[p[0],p[1],ko.w.qf[j],5]),...m.sf.map((p,j)=>[p[0],p[1],ko.w.sf[j],5]),[m.f[0],m.f[1],ko.w.f,5]];
+    const u=upsetsIn(ms);
+    toast(`<b>🏆 你的冠军：${ko.w.f}</b><span class="sub2">淘汰赛押了 ${u} 个冷门 · 可以导出图片分享了</span>`,true);
+  }
 }
 function simKOStage(){ // fill the earliest stage that still has open matches; returns false if all decided
   const m=koMatches(),roll=([a,b])=>Math.random()<winProb(a,b,5)?a:b;
@@ -316,18 +347,18 @@ function countOnce(){
   try{localStorage.setItem(CNT_FLAG,"1")}catch(e){}
   fetch(`${CNT_URL}/hit/${CNT_ID}`).then(r=>r.json()).then(d=>showCount(d.value)).catch(()=>{});
 }
-function koBtn(t,w,side,stage,i){
+function koBtn(t,o,w,side,stage,i){
   const cls=["team",side==="r"?"r":"",w?(w===t?"w":"l"):""].join(" ");
   return `<button class="${cls}" data-ko="${stage}" data-i="${i}" data-t="${t}" aria-pressed="${w===t}">
     <span class="dot" style="background:${REGC[regionOf(t)]}"></span>
-    <span><div class="tag">${t}</div><div class="reg">${TEAMS[t].r} · ${TEAMS[t].s}</div></span><span class="chk">✓ 胜</span></button>`;
+    <span><div class="tag">${t}</div><div class="reg">${regLine(t,o,5)}</div></span><span class="chk">✓ 胜</span></button>`;
 }
 function renderKO(){
   const el=document.getElementById("ko");
   if(!ko){el.innerHTML="";return}
   const m=koMatches();
   if(ko.w.f)countOnce();
-  const match=(p,w,stage,i)=>p?`<div class="match">${koBtn(p[0],w,"l",stage,i)}<div class="vs">VS</div>${koBtn(p[1],w,"r",stage,i)}</div>`:`<div class="wait">等待上一轮结果</div>`;
+  const match=(p,w,stage,i)=>p?`<div class="match">${koBtn(p[0],p[1],w,"l",stage,i)}<div class="vs">VS</div>${koBtn(p[1],p[0],w,"r",stage,i)}</div>`:`<div class="wait">等待上一轮结果</div>`;
   const stage=(title,cls,inner,when)=>`<div class="kostage ${cls}"><div class="ptag"><span><b>${title}</b> · BO5</span><span>${when}</span></div>${inner}</div>`;
   const champ=ko.w.f?`<div class="champ"><span class="lab">冠军预测</span><span class="dot" style="width:5px;height:26px;border-radius:2px;background:${REGC[regionOf(ko.w.f)]}"></span><span class="t">${ko.w.f}</span><small>${TEAMS[ko.w.f].r}</small></div>`:"";
   el.innerHTML=`<section class="round"><div class="rhead"><h2>淘汰赛</h2><button class="redraw" data-koredraw>重新抽签</button></div>
@@ -341,7 +372,7 @@ function teamBtn(t,m,side,ri,mi){
   const cls=["team",side==="r"?"r":"",m.w?(m.w===t?"w":"l"):""].join(" ");
   return `<button class="${cls}" data-r="${ri}" data-m="${mi}" data-t="${t}" aria-pressed="${m.w===t}">
     <span class="dot" style="background:${REGC[regionOf(t)]}"></span>
-    <span><div class="tag">${t}</div><div class="reg">${TEAMS[t].r} · ${TEAMS[t].s}</div></span><span class="chk">✓ 胜</span></button>`;
+    <span><div class="tag">${t}</div><div class="reg">${regLine(t,t===m.a?m.b:m.a,BO[m.pool||"0-0"])}</div></span><span class="chk">✓ 胜</span></button>`;
 }
 function stakeOf(k){const[w,l]=k.split("-").map(Number);
   if(w===2&&l===2)return"胜者晋级 · 败者淘汰";
@@ -372,9 +403,7 @@ function render(){
   document.getElementById("result").innerHTML=any?`<div class="result"><h2>${complete?"你的预测结果":"目前战况"}</h2>
     <div class="tier adv"><div class="lab">3-0 晋级 · 1/2 名档</div><div class="chips">${tiers["3-0"].map(chip).join("")||"<span class='sub'>待定</span>"}</div></div>
     <div class="tier adv"><div class="lab">3-1 晋级 · 3–5 名档</div><div class="chips">${tiers["3-1"].map(chip).join("")||"<span class='sub'>待定</span>"}</div></div>
-    <div class="tier adv"><div class="lab">3-2 晋级 · 6–8 名档</div><div class="chips">${tiers["3-2"].map(chip).join("")||"<span class='sub'>待定</span>"}</div></div>
-    <div class="tier"><div class="lab" style="color:var(--red)">淘汰</div><div class="chips">${tiers.out.sort((a,b)=>b[1]-a[1]).map(([t,w])=>chip(t).replace('class="chip"','class="chip out"').replace("</small>",` · ${w}-3</small>`)).join("")||"<span class='sub'>暂无</span>"}</div></div>
-  </div>`:"";
+    <div class="tier adv"><div class="lab">3-2 晋级 · 6–8 名档</div><div class="chips">${tiers["3-2"].map(chip).join("")||"<span class='sub'>待定</span>"}</div></div>  </div>`:"";
   syncKO();renderKO();
   renderBracket();
 }
@@ -419,6 +448,12 @@ document.getElementById("simNext").onclick=()=>{
   if(ko&&simKOStage()){saveKO();render()}
 };
 document.getElementById("reset").onclick=()=>{fresh();ko=null;saveKO();sync()};
+function setAI(on){
+  SHOW_AI=on;try{localStorage.setItem("worlds26-showai",on?"1":"0")}catch(e){}
+  const b=document.getElementById("aiToggle");b.textContent=`AI 胜率：${on?"开":"关"}`;b.setAttribute("aria-pressed",on);
+}
+setAI(SHOW_AI);
+document.getElementById("aiToggle").onclick=()=>{setAI(!SHOW_AI);render()};
 
 // ---- Export: draw a share poster (bracket + Swiss results + QR code) on a canvas ----
 const SITE="https://jinxiongcheng.github.io/worlds2026/";
@@ -476,8 +511,8 @@ async function makePoster(detail=false){
   }else{txt("完成瑞士轮后预测淘汰赛",P,y,`400 24px ${B}`,C.mute);y+=30}
   // Swiss results
   y+=30;txt("瑞士轮结果",P,y+30,`700 32px ${D}`,C.fg);y+=60;
-  const rec=records(rounds.length),tiers=[["3-0 晋级",[],C.acc],["3-1 晋级",[],C.acc],["3-2 晋级",[],C.acc],["淘汰",[],C.red]];
-  for(const t in TEAMS){const r=rec[t];if(r.w>=3)tiers[r.l][1].push(t);else if(r.l>=3)tiers[3][1].push(t)}
+  const rec=records(rounds.length),tiers=[["3-0 晋级",[],C.acc],["3-1 晋级",[],C.acc],["3-2 晋级",[],C.acc]];
+  for(const t in TEAMS){const r=rec[t];if(r.w>=3)tiers[r.l][1].push(t)}
   tiers.forEach(([lab,ts,col],k)=>{
     txt(lab,P,y+32,`700 24px ${D}`,col);let X=P+170;
     if(!ts.length)txt("待定",X,y+32,`400 24px ${B}`,C.mute);
