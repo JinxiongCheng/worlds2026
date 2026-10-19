@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Worlds 2026 瑞士轮预测</title>
+<title>Worlds 2026 瑞士轮·淘汰赛预测</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap">
@@ -108,6 +108,12 @@ details.rules ul{margin:6px 0 0;padding-left:18px}
 .credit{font-family:var(--display);font-weight:700;font-size:.85rem;letter-spacing:.12em;color:var(--accent)}
 .bkhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
 .foot{color:var(--mute);font-size:.75rem;text-align:center;line-height:1.6}
+.modal{position:fixed;inset:0;z-index:20;background:rgba(3,6,18,.82);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:max(16px,env(safe-area-inset-top,0px)) 16px 24px}
+.mbox{display:flex;flex-direction:column;align-items:center;gap:12px;max-width:520px;width:100%}
+.mbox img{width:100%;height:auto;border-radius:10px;border:1px solid var(--line);-webkit-touch-callout:default}
+.mhint{color:var(--mute);font-size:.85rem}
+.mbtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.mbtns a{text-decoration:none}
 .count{text-align:center;font-family:var(--display);font-size:.95rem;color:var(--mute);letter-spacing:.04em}
 .count b{color:var(--accent);font-size:1.2rem;margin:0 2px}
 .kogrid{display:flex;flex-direction:column;gap:18px}
@@ -128,7 +134,7 @@ details.rules ul{margin:6px 0 0;padding-left:18px}
 
 <div class="wrap">
   <header>
-    <h1>WORLDS 2026 <span>瑞士轮</span>预测</h1>
+    <h1>WORLDS 2026 <span>瑞士轮·淘汰赛</span>预测</h1>
     <div class="credit">MADE BY 虎扑：喜欢冬天winter</div>
     <div class="sub">点击你认为会赢的队伍。一轮全部选完后，下一轮按战绩分组自动抽签。3 胜晋级，3 败淘汰；瑞士轮结束后继续预测八强、四强和决赛。</div>
   </header>
@@ -136,6 +142,7 @@ details.rules ul{margin:6px 0 0;padding-left:18px}
     <button class="btn primary" id="simAll">一键实力模拟</button>
     <button class="btn" id="simNext">实力模拟本轮</button>
     <button class="btn" id="reset">清空重来</button>
+    <button class="btn" id="export">导出图片</button>
   </div>
   <details class="rules">
     <summary>瑞士轮规则说明</summary>
@@ -158,6 +165,19 @@ details.rules ul{margin:6px 0 0;padding-left:18px}
   <div class="count" id="count" hidden></div>
   <div class="foot">Made by 虎扑：喜欢冬天winter · 预测结果保存在本机浏览器中。</div>
 </div>
+
+<div class="modal" id="shot" hidden>
+  <div class="mbox">
+    <img id="shotImg" alt="我的 Worlds 2026 预测">
+    <div class="mhint">手机上长按图片即可保存到相册</div>
+    <div class="mbtns">
+      <a class="btn primary" id="shotDl" download="worlds2026-prediction.png">下载图片</a>
+      <button class="btn" id="shotShare" hidden>分享</button>
+      <button class="btn" id="shotClose">关闭</button>
+    </div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 
 <script>
 const TEAMS={
@@ -396,6 +416,103 @@ document.getElementById("simNext").onclick=()=>{
   if(ko&&simKOStage()){saveKO();render()}
 };
 document.getElementById("reset").onclick=()=>{fresh();ko=null;saveKO();sync()};
+
+// ---- Export: draw a share poster (bracket + Swiss results + QR code) on a canvas ----
+const SITE="https://jinxiongcheng.github.io/worlds2026/";
+function drawQR(x,text,X,Y,size){
+  if(typeof qrcode==="undefined")return false;
+  const q=qrcode(0,"M");q.addData(text);q.make();
+  const n=q.getModuleCount(),cell=Math.floor(size/(n+8)),off=Math.floor((size-cell*n)/2);
+  x.fillStyle="#fff";x.fillRect(X,Y,size,size);x.fillStyle="#000";
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(q.isDark(r,c))x.fillRect(X+off+c*cell,Y+off+r*cell,cell,cell);
+  return true;
+}
+async function makePoster(){
+  try{await document.fonts.ready}catch(e){}
+  const W=1080,P=60,cv=document.createElement("canvas");cv.width=W;cv.height=3000;
+  const x=cv.getContext("2d");
+  const C={bg:"#070d24",panel:"#0e1838",panel2:"#15224a",line:"#253463",fg:"#e8eefc",mute:"#8a98c4",acc:"#2fe0f2",gold:"#f2c94c",red:"#ff6b7a",lose:"#4a557a"};
+  const D='"Chakra Petch","Noto Sans SC",sans-serif',B='"Noto Sans SC",sans-serif';
+  const rr=(X,Y,w,h,r,fill,stroke)=>{x.beginPath();x.moveTo(X+r,Y);x.arcTo(X+w,Y,X+w,Y+h,r);x.arcTo(X+w,Y+h,X,Y+h,r);x.arcTo(X,Y+h,X,Y,r);x.arcTo(X,Y,X+w,Y,r);x.closePath();
+    if(fill){x.fillStyle=fill;x.fill()}if(stroke){x.strokeStyle=stroke;x.lineWidth=2;x.stroke()}};
+  const txt=(s,X,Y,font,color,align="left")=>{x.font=font;x.fillStyle=color;x.textAlign=align;x.fillText(s,X,Y)};
+  x.fillStyle=C.bg;x.fillRect(0,0,W,cv.height);
+  let y=P+56;
+  txt("WORLDS 2026",P,y,`700 60px ${D}`,C.fg);
+  x.font=`700 60px ${D}`;const tw0=x.measureText("WORLDS 2026 ").width;
+  txt("瑞士轮·淘汰赛",P+tw0,y,`700 60px ${D}`,C.acc);
+  x.font=`700 60px ${D}`;txt("预测",P+tw0+x.measureText("瑞士轮·淘汰赛").width,y,`700 60px ${D}`,C.fg);
+  y+=44;txt("MADE BY 虎扑：喜欢冬天winter",P,y,`700 24px ${D}`,C.acc);
+  y+=36;
+  if(ko&&ko.w.f){
+    rr(P,y,W-2*P,180,16,"rgba(242,201,76,.14)",C.gold);
+    txt("我的冠军预测",W/2,y+50,`700 26px ${D}`,C.gold,"center");
+    txt(ko.w.f,W/2,y+130,`700 84px ${D}`,C.gold,"center");
+    txt(TEAMS[ko.w.f].r,W/2,y+164,`400 20px ${B}`,C.mute,"center");
+    y+=210;
+  }
+  // knockout bracket
+  txt("淘汰赛",P,y+30,`700 32px ${D}`,C.fg);y+=60;
+  if(ko){
+    const m=koMatches(),gapX=30,cw=(W-2*P-2*gapX)/3,bh=110,gap=26,cols=[0,1,2].map(i=>P+i*(cw+gapX));
+    const box=(X,Y,p,w)=>{
+      rr(X,Y,cw,bh,12,C.panel,C.line);
+      if(!p){txt("待定",X+cw/2,Y+bh/2+8,`500 22px ${B}`,C.mute,"center");return}
+      p.forEach((t,i)=>{const yy=Y+i*bh/2,win=w===t;
+        x.fillStyle=REGC[regionOf(t)];x.fillRect(X+14,yy+14,5,bh/2-28);
+        txt(t,X+32,yy+bh/4+12,`700 32px ${D}`,w?(win?C.acc:C.lose):C.fg);
+        if(win)txt("✓",X+cw-18,yy+bh/4+10,`700 26px ${D}`,C.acc,"right");});
+      x.strokeStyle=C.line;x.lineWidth=1;x.beginPath();x.moveTo(X+12,Y+bh/2);x.lineTo(X+cw-12,Y+bh/2);x.stroke();
+    };
+    ["八强","四强","决赛"].forEach((h,i)=>txt(h,cols[i],y,`700 22px ${D}`,C.mute));y+=18;
+    const qy=i=>y+i*(bh+gap);
+    ko.qf.forEach((p,i)=>box(cols[0],qy(i),p,ko.w.qf[i]));
+    m.sf.forEach((p,i)=>box(cols[1],(qy(2*i)+qy(2*i+1))/2,p,ko.w.sf[i]));
+    box(cols[2],(qy(0)+qy(3))/2,m.f,ko.w.f);
+    y=qy(4);
+  }else{txt("完成瑞士轮后预测淘汰赛",P,y,`400 24px ${B}`,C.mute);y+=30}
+  // Swiss results
+  y+=30;txt("瑞士轮结果",P,y+30,`700 32px ${D}`,C.fg);y+=60;
+  const rec=records(rounds.length),tiers=[["3-0 晋级",[],C.acc],["3-1 晋级",[],C.acc],["3-2 晋级",[],C.acc],["淘汰",[],C.red]];
+  for(const t in TEAMS){const r=rec[t];if(r.w>=3)tiers[r.l][1].push(t);else if(r.l>=3)tiers[3][1].push(t)}
+  tiers.forEach(([lab,ts,col],k)=>{
+    txt(lab,P,y+32,`700 24px ${D}`,col);let X=P+170;
+    if(!ts.length)txt("待定",X,y+32,`400 24px ${B}`,C.mute);
+    ts.forEach(t=>{x.font=`700 30px ${D}`;const tw=x.measureText(t).width+42;
+      if(X+tw>W-P){X=P+170;y+=56}
+      rr(X,y,tw,46,8,C.panel2);x.fillStyle=REGC[regionOf(t)];x.fillRect(X+12,y+11,4,24);
+      txt(t,X+26,y+34,`700 30px ${D}`,k===3?C.mute:C.fg);X+=tw+12;});
+    y+=66;
+  });
+  // footer with QR code
+  y+=14;x.strokeStyle=C.line;x.lineWidth=2;x.beginPath();x.moveTo(P,y);x.lineTo(W-P,y);x.stroke();y+=40;
+  const qs=200,hasQR=drawQR(x,SITE,P,y,qs),tx=hasQR?P+qs+40:P;
+  txt("扫码来做你的预测",tx,y+70,`700 40px ${D}`,C.fg);
+  txt("MADE BY 虎扑：喜欢冬天winter",tx,y+118,`700 24px ${D}`,C.acc);
+  const cn=document.querySelector("#count b");
+  if(cn&&!document.getElementById("count").hidden)txt(`已有 ${cn.textContent} 人完成预测`,tx,y+162,`400 22px ${B}`,C.mute);
+  y+=(hasQR?qs:180)+P;
+  const out=document.createElement("canvas");out.width=W;out.height=y;out.getContext("2d").drawImage(cv,0,0);
+  return out;
+}
+let shotURL=null,shotFile=null;
+document.getElementById("export").onclick=async()=>{
+  const btn=document.getElementById("export");btn.textContent="生成中…";
+  try{
+    const canvas=await makePoster();
+    const blob=await new Promise(r=>canvas.toBlob(r,"image/png"));
+    if(shotURL)URL.revokeObjectURL(shotURL);
+    shotURL=URL.createObjectURL(blob);
+    shotFile=new File([blob],"worlds2026-prediction.png",{type:"image/png"});
+    document.getElementById("shotImg").src=shotURL;
+    document.getElementById("shotDl").href=shotURL;
+    document.getElementById("shotShare").hidden=!(navigator.canShare&&navigator.canShare({files:[shotFile]}));
+    document.getElementById("shot").hidden=false;
+  }finally{btn.textContent="导出图片"}
+};
+document.getElementById("shotShare").onclick=()=>{navigator.share({files:[shotFile],title:"我的 Worlds 2026 预测",text:SITE}).catch(()=>{})};
+document.getElementById("shotClose").onclick=()=>{document.getElementById("shot").hidden=true};
+document.getElementById("shot").onclick=e=>{if(e.target.id==="shot")e.currentTarget.hidden=true};
 sync();
 </script>
 </body>
