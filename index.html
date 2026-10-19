@@ -112,6 +112,8 @@ details.rules ul{margin:6px 0 0;padding-left:18px}
 .mbox{display:flex;flex-direction:column;align-items:center;gap:12px;max-width:520px;width:100%}
 .mbox img{width:100%;height:auto;border-radius:10px;border:1px solid var(--line);-webkit-touch-callout:default}
 .mhint{color:var(--mute);font-size:.85rem}
+.mopt{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:.9rem;cursor:pointer}
+.mopt input{width:18px;height:18px;accent-color:var(--accent);margin:0}
 .mbtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .mbtns a{text-decoration:none}
 .count{text-align:center;font-family:var(--display);font-size:.95rem;color:var(--mute);letter-spacing:.04em}
@@ -168,6 +170,7 @@ details.rules ul{margin:6px 0 0;padding-left:18px}
 
 <div class="modal" id="shot" hidden>
   <div class="mbox">
+    <label class="mopt"><input type="checkbox" id="shotDetail"> 包含瑞士轮对阵图</label>
     <img id="shotImg" alt="我的 Worlds 2026 预测">
     <div class="mhint">手机上长按图片即可保存到相册</div>
     <div class="mbtns">
@@ -427,9 +430,9 @@ function drawQR(x,text,X,Y,size){
   for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(q.isDark(r,c))x.fillRect(X+off+c*cell,Y+off+r*cell,cell,cell);
   return true;
 }
-async function makePoster(){
+async function makePoster(detail=false){
   try{await document.fonts.ready}catch(e){}
-  const W=1080,P=60,cv=document.createElement("canvas");cv.width=W;cv.height=3000;
+  const W=1080,P=60,cv=document.createElement("canvas");cv.width=W;cv.height=4400;
   const x=cv.getContext("2d");
   const C={bg:"#070d24",panel:"#0e1838",panel2:"#15224a",line:"#253463",fg:"#e8eefc",mute:"#8a98c4",acc:"#2fe0f2",gold:"#f2c94c",red:"#ff6b7a",lose:"#4a557a"};
   const D='"Chakra Petch","Noto Sans SC",sans-serif',B='"Noto Sans SC",sans-serif';
@@ -484,6 +487,49 @@ async function makePoster(){
       txt(t,X+26,y+34,`700 30px ${D}`,k===3?C.mute:C.fg);X+=tw+12;});
     y+=66;
   });
+  // optional: every Swiss round in detail
+  if(detail){
+    // same shape as the on-page Swiss bracket: R1..R5 + result columns, each centred vertically
+    y+=10;txt("瑞士轮对阵图",P,y+30,`700 32px ${D}`,C.fg);y+=56;
+    const gx=12,cw=(W-2*P-5*gx)/6,rowH=30,headH=24,gapB=12,TF=`700 18px ${D}`;
+    const rec5=records(rounds.length);
+    const pool=(ri,k)=>{const ms=(rounds[ri]||[]).filter(m=>(m.pool||"0-0")===k);return ms.length?{t:"pool",k,ms,h:headH+ms.length*rowH+4}:null};
+    const wrap=ts=>{const lines=[[]];let lw=0;x.font=TF;
+      ts.forEach(t=>{const w=x.measureText(t).width+10;if(lw+w>cw-12&&lines.at(-1).length){lines.push([]);lw=0}lines.at(-1).push(t);lw+=w});return lines};
+    const out=(w,l,lab)=>{const ts=Object.keys(TEAMS).filter(t=>rec5[t].w===w&&rec5[t].l===l);if(!ts.length)return null;
+      const lines=wrap(ts);return{t:"out",w,l,lab,lines,h:headH+lines.length*24+8}};
+    const cols=[
+      ["R1 · 10/23",[pool(0,"0-0")]],
+      ["R2 · 10/24",[pool(1,"1-0"),pool(1,"0-1")]],
+      ["R3 · 10/25–26",[pool(2,"2-0"),pool(2,"1-1"),pool(2,"0-2")]],
+      ["R4 · 10/28–30",[out(3,0,"1/2名"),pool(3,"2-1"),pool(3,"1-2"),out(0,3)]],
+      ["R5 · 10/31",[out(3,1,"3–5名"),pool(4,"2-2"),out(1,3)]],
+      ["结果",[out(3,2,"6–8名"),out(2,3)]]
+    ].map(([h,bs])=>{bs=bs.filter(Boolean);return{h,bs,H:bs.reduce((s,b)=>s+b.h,0)+Math.max(0,bs.length-1)*gapB}});
+    const maxH=Math.max(...cols.map(c=>c.H));
+    cols.forEach((c,ci)=>{
+      const X=P+ci*(cw+gx);txt(c.h,X+cw/2,y+16,`700 15px ${D}`,C.mute,"center");
+      let Y=y+30+(maxH-c.H)/2;
+      c.bs.forEach(b=>{
+        if(b.t==="pool"){
+          rr(X,Y,cw,b.h,8,C.panel2);
+          txt(b.k,X+8,Y+17,`700 14px ${D}`,C.fg);txt(`BO${BO[b.k]}`,X+cw-8,Y+17,`500 13px ${D}`,C.mute,"right");
+          b.ms.forEach((m,i)=>{const yy=Y+headH+i*rowH;
+            x.strokeStyle=C.line;x.lineWidth=1;x.beginPath();x.moveTo(X,yy);x.lineTo(X+cw,yy);x.stroke();
+            const col=t=>m.w===t?C.acc:(m.w?C.lose:C.fg);
+            txt(m.a,X+8,yy+21,TF,col(m.a));txt("vs",X+cw/2,yy+20,`500 11px ${D}`,C.mute,"center");txt(m.b,X+cw-8,yy+21,TF,col(m.b),"right");});
+        }else{
+          const adv=b.w===3;
+          rr(X,Y,cw,b.h,8,adv?"rgba(47,224,242,.12)":"rgba(255,107,122,.08)",adv?"rgba(47,224,242,.5)":"rgba(255,107,122,.35)");
+          txt(adv?"晋级":"淘汰",X+8,Y+17,`700 13px ${D}`,adv?C.acc:C.red);
+          txt(`${b.w}-${b.l}${b.lab?" · "+b.lab:""}`,X+cw-8,Y+17,`700 13px ${D}`,adv?C.acc:C.red,"right");
+          b.lines.forEach((ln,i)=>{let lx=X+8;ln.forEach(t=>{txt(t,lx,Y+headH+i*24+18,TF,adv?C.fg:C.mute);x.font=TF;lx+=x.measureText(t).width+10})});
+        }
+        Y+=b.h+gapB;
+      });
+    });
+    y+=30+maxH+20;
+  }
   // footer with QR code
   y+=14;x.strokeStyle=C.line;x.lineWidth=2;x.beginPath();x.moveTo(P,y);x.lineTo(W-P,y);x.stroke();y+=40;
   const qs=200,hasQR=drawQR(x,SITE,P,y,qs),tx=hasQR?P+qs+40:P;
@@ -496,17 +542,21 @@ async function makePoster(){
   return out;
 }
 let shotURL=null,shotFile=null;
+async function renderShot(){
+  const canvas=await makePoster(document.getElementById("shotDetail").checked);
+  const blob=await new Promise(r=>canvas.toBlob(r,"image/png"));
+  if(shotURL)URL.revokeObjectURL(shotURL);
+  shotURL=URL.createObjectURL(blob);
+  shotFile=new File([blob],"worlds2026-prediction.png",{type:"image/png"});
+  document.getElementById("shotImg").src=shotURL;
+  document.getElementById("shotDl").href=shotURL;
+  document.getElementById("shotShare").hidden=!(navigator.canShare&&navigator.canShare({files:[shotFile]}));
+}
+document.getElementById("shotDetail").onchange=renderShot;
 document.getElementById("export").onclick=async()=>{
   const btn=document.getElementById("export");btn.textContent="生成中…";
   try{
-    const canvas=await makePoster();
-    const blob=await new Promise(r=>canvas.toBlob(r,"image/png"));
-    if(shotURL)URL.revokeObjectURL(shotURL);
-    shotURL=URL.createObjectURL(blob);
-    shotFile=new File([blob],"worlds2026-prediction.png",{type:"image/png"});
-    document.getElementById("shotImg").src=shotURL;
-    document.getElementById("shotDl").href=shotURL;
-    document.getElementById("shotShare").hidden=!(navigator.canShare&&navigator.canShare({files:[shotFile]}));
+    await renderShot();
     document.getElementById("shot").hidden=false;
   }finally{btn.textContent="导出图片"}
 };
